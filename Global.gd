@@ -2,13 +2,19 @@ extends Node
 
 var inventory = []
 
+# SIGNALS
+
+signal tree_chopped
+signal energy_changed
 signal inventory_updated
 signal hotbar_inventory_updated
 
 var spawnable_items = [
-	{"type": "Consumable", "name": "Brown Mushroom", "description": "Health", "texture":
+	{"type": "Consumable", "name": "Brown Mushroom", "description": "An edible brown mushroom.", "texture":
 		preload("res://Art/Consumables/brown_mushroom.png")},
 ]
+
+# INVENTORY MANAGER
 
 var player_node: Node = null
 @onready var inventory_slot_scene = preload("res://Scenes/inventory_slot.tscn")
@@ -75,3 +81,11 @@ func swap_inventory_items(index1, index2):
 	inventory[index2] = temp
 	inventory_updated.emit()
 	return true
+
+# HEALTH AND ENERGY MANAGER
+
+var current_energy: int = 100
+
+func update_energy():
+	current_energy -= 1
+	energy_changed.emit()
