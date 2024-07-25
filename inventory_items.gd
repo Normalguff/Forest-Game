@@ -1,59 +1,81 @@
-@tool
-extends Node2D
+extends Control
 
-@export var item_type = ""
-@export var item_name = ""
-@export var item_texture: Texture
-@export var item_description = ""
-var scene_path: String = "res://Scenes/inventory_item.tscn"
+class_name InventorySlot
 
-@onready var icon_sprite = $Sprite2D
+@onready var icon = $InventoryContainer/ItemIcon
+@onready var quantity_label = $InventoryContainer/ItemQuantity
+@onready var details_panel = $DetailPanel
+@onready var item_name = $DetailPanel/ItemName
+@onready var item_type = $DetailPanel/ItemType
+@onready var item_description = $DetailPanel/ItemDescription
+@onready var usage_panel = $UsagePanel
+@onready var item_button = $ItemButton
 
-var player_in_range = false
+var item_in_hand
+var initialpos: Vector2
+var offset: Vector2
 
-func _ready():
-	if not Engine.is_editor_hint():
-		icon_sprite.texture = item_texture
+signal drag_start(slot)
+signal drag_end()
+
+var item = null
+var slot_index = -1
+var is_assigned = false
+
+func set_slot_index(new_index):
+	slot_index = new_index
+
+func _on_item_button_mouse_entered():
+	if item != null:
+		usage_panel.visible = false
+		details_panel.visible = true
+
+func _on_item_button_mouse_exited():
+	details_panel.visible = false
+
+func set_empty():
+	icon.texture = null
+	quantity_label.text = ""
 	
-func _process(delta):
-	if Engine.is_editor_hint():
-		icon_sprite.texture = item_texture
+func set_item(new_item):
+	item = new_item
+	icon.texture = new_item["texture"]
+	quantity_label.text = str(item["quantity"])
+	item_name.text = str(item["name"])
+	item_type.text = str(item["type"])
+	if item["description"] != "":
+		item_description.text = str("", item["description"])
+	else:
+		item_description.text = ""
 		
-	if player_in_range and Input.is_action_just_pressed("add"):
-		pickup_item()
-
-func pickup_item():
-	var item = {
-		"quantity": 1,
-		"type": item_type,
-		"name": item_name,
-		"texture": item_texture,
-		"description": item_description,
-		"scene_path": scene_path
-	}
-	if Global.add_item(item):
-		if Global.player_node:
-			self.queue_free()
-
-func _on_area_2d_body_entered(body):
-	if body.is_in_group("Player"):
-		player_in_range = true
-		body.interact_ui.visible = true
-		body.interact_label.text = ("pick up")
-
-func _on_area_2d_body_exited(body):
-	if body.is_in_group("Player"):
-		player_in_range = false
-		body.interact_ui.visible = false
+func _on_drop_button_pressed():
+	if item != null:
+		var drop_position = Global.player_node.global_position
+		var drop_offset = Vector2(0, 50)
+		drop_offset = drop_offset.rotated(Global.player_node.rotation)
+		Global.drop_item(item, drop_position + drop_offset)
+		Global.remove_item(item["type"], item["description"])
+		usage_panel.visible = false
 		
-func set_item_data(data):
-	item_type = data["type"]
-	item_name = data["name"]
-	item_description = data["description"]
-	item_texture = data["texture"]
+func _on_item_button_gui_input(event):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.is_pressed():
+			if item != null:
+				usage_panel.visible = !usage_panel.visible
+				
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.is_pressed():
+				item_in_hand = true
+				quantity_label.visible = false
+				drag_start.emit(self)
+			else:
+				drag_end.emit()
+				quantity_label.visible = true
+				item_in_hand = false
 	
-func initiate_items(type, name, description, texture):
-	item_type = type
-	item_name = name
-	item_description = description
-	item_texture = texture
+func _physics_process(delta):
+	if item_in_hand == true:
+		icon.global_position = get_global_mouse_position()
+	if item_in_hand == false:
+		offset = Vector2(30,30)
+		icon.global_position = item_button.global_position + offset
