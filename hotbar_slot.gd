@@ -44,7 +44,7 @@ func set_item(new_item):
 func _on_drop_button_pressed():
 	if item != null:
 		var drop_position = Global.player_node.global_position
-		var drop_offset = Vector2(0, 50)
+		var drop_offset = Vector2(0, 25)
 		drop_offset = drop_offset.rotated(Global.player_node.rotation)
 		Global.drop_item(item, drop_position + drop_offset)
 		Global.remove_item(item["type"], item["description"])
